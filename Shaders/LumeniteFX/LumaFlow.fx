@@ -17,7 +17,7 @@
         Description: LumaFlow - An Optical Flow shader for ReShade.
         Usage Guide: - Use the flow field "sFinalFlow" and accompanying
                        "sConfidence" samplers
-                     - Example: You would use confidence as:
+                     - Example: For reprojection, you would use confidence as:
                        lerp(current, previous_warped_with_flow, confidence*0.9)
         ========================================================================
 */
@@ -31,7 +31,7 @@ uniform int FRAME_COUNT < source = "framecount"; >;
 uniform int DEBUG_VIEW <
     ui_type = "combo";
     ui_items = "Debug Off\0"
-               "Final Flow\0"
+               "Optical Flow\0"
                "Motion Vectors\0"
                "Confidence Map\0"
                ;
@@ -86,7 +86,7 @@ texture2D tPrevBackBuffer { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format
 sampler2D sPrevBackBuffer { Texture = tPrevBackBuffer; MagFilter = LINEAR; MinFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 
 texture2D tConfidence { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = R16F; };
-sampler2D sConfidence { Texture = tConfidence; MagFilter = POINT; MinFilter = POINT; };
+sampler2D sConfidence { Texture = tConfidence; MagFilter = POINT; MinFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; };
 
 /*==============================================================================
     HELPERS
@@ -152,9 +152,7 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
 
 float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
 {
-    if(GetDepth(uv) > 0.999)
-        return float2(0, 0);
-
+    // Proper Median9- however; even if it has to create a phantom vector
     float x_values[9], y_values[9];
     int idx = 0;
 
@@ -197,9 +195,6 @@ float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
 
 float2 SpatialRegularization(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
 {
-    if(GetDepth(uv) > 0.999)
-        return float2(0, 0);
-
     #define LUMA_SIGMA 0.1
     #define SPATIAL_SIGMA 1.5
     #define DISOCCLUSION_THRESHOLD 0.01
@@ -255,7 +250,7 @@ float2 SpatialRegularization(sampler2D motion_tex, float2 uv, float2 texel_size,
 
 float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
 {
-    if(GetDepth(uv) > 0.999 || FRAME_COUNT == 0)
+    if(FRAME_COUNT == 0)
         return float2(0, 0);
 
     #define SEARCH_ITER 10
@@ -282,10 +277,6 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     };
 
     //=== (1) Get best prediction from source level- Pool neighbors, and afterwards temporal, global and zero motion as candidates
-    // These vectors are stored in resolution-independent UV-space, meaning they represent a percentage of the screen's dimensions.
-    // They shouldn't be multiplied by 2 here. They are not pixel-space vectors and don't require manual scaling when resolution doubles.
-    // If doubled, it will cause the initial motion prediction to be twice as large as it should be. I made this mistake at first. LOL.
-    // Consequently, the subsequent search algorithm will starts in the wrong area and find poor matches.
     float2 texel_size = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(mip1));
     float2 source_texel_size = rcp(tex2Dsize(source_flow_sampler, 0));
 
@@ -448,8 +439,7 @@ float2 PS_CoarseFlowL4(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Targ
     #define SEARCH_RADIUS 3
     static const int mip = 5;
 
-    // Early skybox rejection
-    if(GetDepth(uv) > 0.999 || FRAME_COUNT == 0) return float2(0, 0);
+    if(FRAME_COUNT == 0) return float2(0, 0);
 
     float2 texel_size = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(mip));
 
@@ -617,7 +607,7 @@ float4 PS_Debug(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
             float2 motion_pixels = motion * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
             float motion_magnitude = length(motion_pixels);
 
-            if(motion_magnitude < 0.5 || GetDepth(motion_grid) > 0.999)
+            if(motion_magnitude < 0.5) // subpixel
                 return float4(base_color, 1.0);
 
             float arrow_length = clamp(motion_magnitude * 3.0, 8.0, 48.0);
@@ -705,7 +695,7 @@ float2 PS_SpatialRegularizationDense(float4 pos : SV_Position, float2 uv : TEXCO
 
 float PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
-    if(GetDepth(uv) > 0.999 || FRAME_COUNT == 0) return 0.0; // Zero confidence
+    if(FRAME_COUNT == 0) return 0.0;
 
     float2 flow = tex2D(sFinalFlow, uv).xy;
 
@@ -798,4 +788,3 @@ technique LumaFlow <
     pass { VertexShader = PostProcessVS; PixelShader = PS_CopyCurrLumaAsPrev; RenderTarget = tPrevLuma; }
     pass { VertexShader = PostProcessVS; PixelShader = PS_CopyCurrColorAsPrev; RenderTarget = tPrevBackBuffer; }
 }
-
