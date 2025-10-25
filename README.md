@@ -1,2 +1,1 @@
-# LUMENITE
-Kaidō's ReShade Effects
+# LumeniteFX Shaders
