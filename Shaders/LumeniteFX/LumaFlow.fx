@@ -524,8 +524,7 @@ float2 PS_GlobalFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 
     float x_values[32], y_values[32];
     int count = 0;
-
-    [unroll]
+    
     for(int i = 0; i < 32; i++)
     {
         float depth = GetDepth(SPARSE_SCREEN[i]);
