@@ -16,11 +16,13 @@
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - An Optical Flow shader for ReShade.
         License    : Creative Commons Attribution Non Commercial 4.0 International
-                     CC-BY-NC 4.0 (SPDX Identifier)
+                     CC-BY-NC-4.0 (SPDX Identifier)
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
                        "sMotionConfidence" samplers
                      - Example: For reprojection, you would use confidence as:
                        lerp(current, previous_warped_with_flow, confidence*0.9)
+
+        GitHub     : https://github.com/umar-afzaal/LumeniteFX
         ========================================================================
 */
 
@@ -755,7 +757,7 @@ void PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD, out float2 fl
 ==============================================================================*/
 technique LumaFlow <
     ui_label = "LumaFlow";
-    ui_tooltip = "An Optical Flow for ReShade by Kaidō.";
+    ui_tooltip = "Dense Optical Flow for ReShade by Kaidō.";
 >
 {
     //=== Luma pyramid
