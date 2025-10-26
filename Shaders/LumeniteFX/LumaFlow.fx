@@ -156,10 +156,8 @@ float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
     float x_values[9], y_values[9];
     int idx = 0;
 
-    [unroll]
     for(int dy = -1; dy <= 1; dy++)
     {
-        [unroll]
         for(int dx = -1; dx <= 1; dx++)
         {
             float2 vec = tex2Dlod(motion_tex, float4(uv + float2(dx, dy) * texel_size, 0, mip)).xy;
@@ -172,7 +170,6 @@ float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
     // Partial bubble sort - only guarantees median (5th element) is correct
     for(int k = 0; k < 5; k++)
     {
-
         for(int i = 0; i < 8 - k; i++)  // Skip already-bubbled tail
         {
             if(x_values[i] > x_values[i+1])
