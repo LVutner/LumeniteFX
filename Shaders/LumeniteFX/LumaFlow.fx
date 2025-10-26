@@ -692,11 +692,6 @@ float2 PS_SmoothFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     return BilateralFilter(sDenseFlow_A, uv, rcp(tex2Dsize(sDenseFlow_A, 0)), 2);
 }
 
-float2 PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
-{
-    return tex2D(sFinalFlow, uv).xy;
-}
-
 float PS_Confidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
     if(FRAME_COUNT == 0) return 0.0;
@@ -743,6 +738,11 @@ float PS_Confidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     return (consistency_confidence * length_confidence * photometric_confidence);
 }
 
+float2 PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+{
+    return tex2D(sFinalFlow, uv).xy;
+}
+
 /*==============================================================================
     TECHNIQUE
 ==============================================================================*/
@@ -781,10 +781,11 @@ technique LumaFlow <
     // === Global Flow
     pass { VertexShader = PostProcessVS; PixelShader = PS_GlobalFlow; RenderTarget = tGlobalFlow; }
 
-    pass { VertexShader = PostProcessVS; PixelShader = PS_ExportFlow; RenderTarget = texMotionVectors; }
-
     // === Confidence Map for the Flow field
     pass { VertexShader = PostProcessVS; PixelShader = PS_Confidence; RenderTarget = tMotionConfidence; }
+
+    //=== Export the Flow
+    pass { VertexShader = PostProcessVS; PixelShader = PS_ExportFlow; RenderTarget = texMotionVectors; }
 
     //=== Debug pass
     pass { VertexShader = PostProcessVS; PixelShader = PS_Debug; }
