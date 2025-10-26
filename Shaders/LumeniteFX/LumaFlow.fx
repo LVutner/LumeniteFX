@@ -15,8 +15,8 @@
         Filename   : LumaFlow.fx
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - An Optical Flow shader for ReShade.
-        Usage Guide: - Use the flow field "sFinalFlow" and accompanying
-                       "sConfidence" samplers
+        Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
+                       "sMotionConfidence" samplers
                      - Example: For reprojection, you would use confidence as:
                        lerp(current, previous_warped_with_flow, confidence*0.9)
         ========================================================================
@@ -85,8 +85,11 @@ sampler2D sPrevFrameFlow { Texture = tPrevFlow; MagFilter = POINT; MinFilter = P
 texture2D tPrevBackBuffer { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; };
 sampler2D sPrevBackBuffer { Texture = tPrevBackBuffer; MagFilter = LINEAR; MinFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 
-texture2D tConfidence { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = R16F; };
-sampler2D sConfidence { Texture = tConfidence; MagFilter = POINT; MinFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; };
+texture2D tMotionConfidence { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = R16F; };
+sampler2D sMotionConfidence { Texture = tMotionConfidence; MagFilter = POINT; MinFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; };
+
+texture2D texMotionVectors { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG16F; };
+sampler2D sTexMotionVectorsSampler { Texture = texMotionVectors; MagFilter = POINT; MinFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; };
 
 /*==============================================================================
     HELPERS
@@ -524,7 +527,7 @@ float2 PS_GlobalFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 
     float x_values[32], y_values[32];
     int count = 0;
-    
+
     for(int i = 0; i < 32; i++)
     {
         float depth = GetDepth(SPARSE_SCREEN[i]);
@@ -583,7 +586,7 @@ float4 PS_Debug(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     switch(DEBUG_VIEW)
     {
         case 0:  return float4(GetColor(uv), 1);
-        case 1: return float4(MotionToColor(tex2Dlod(sFinalFlow, float4(uv, 0, 0)).xy), 1);
+        case 1: return float4(MotionToColor(tex2Dlod(sTexMotionVectorsSampler, float4(uv, 0, 0)).xy), 1);
         case 2:
         {
             static const float ARROW_THICKNESS = 1.0;
@@ -599,7 +602,7 @@ float4 PS_Debug(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
             float2 motion_grid = floor(uv / motion_texel_size / GRID_STEP) * motion_texel_size * GRID_STEP + motion_texel_size * GRID_STEP * 0.5;
             float2 grid_pixel_pos = motion_grid * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
 
-            float2 motion = tex2D(sFinalFlow, motion_grid).xy;
+            float2 motion = tex2D(sTexMotionVectorsSampler, motion_grid).xy;
             float2 motion_pixels = motion * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
             float motion_magnitude = length(motion_pixels);
 
@@ -651,7 +654,7 @@ float4 PS_Debug(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
         }
         case 3:
         {
-            float confidence = tex2D(sConfidence, uv).x;
+            float confidence = tex2D(sMotionConfidence, uv).x;
             // Color ramp: Red (low) -> Yellow (mid) -> Green (high)
             float3 confidenceColor;
             if (confidence < 0.5)
@@ -689,7 +692,12 @@ float2 PS_SmoothFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     return BilateralFilter(sDenseFlow_A, uv, rcp(tex2Dsize(sDenseFlow_A, 0)), 2);
 }
 
-float PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float2 PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+{
+    return tex2D(sFinalFlow, uv).xy;
+}
+
+float PS_Confidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
     if(FRAME_COUNT == 0) return 0.0;
 
@@ -773,8 +781,10 @@ technique LumaFlow <
     // === Global Flow
     pass { VertexShader = PostProcessVS; PixelShader = PS_GlobalFlow; RenderTarget = tGlobalFlow; }
 
+    pass { VertexShader = PostProcessVS; PixelShader = PS_ExportFlow; RenderTarget = texMotionVectors; }
+
     // === Confidence Map for the Flow field
-    pass { VertexShader = PostProcessVS; PixelShader = PS_ExportFlow; RenderTarget = tConfidence; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_Confidence; RenderTarget = tMotionConfidence; }
 
     //=== Debug pass
     pass { VertexShader = PostProcessVS; PixelShader = PS_Debug; }
