@@ -16,7 +16,7 @@
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - An Optical Flow shader for ReShade.
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
-                       "sConfidence" samplers
+                       "sMotionConfidence" samplers
                      - Example: For reprojection, you would use confidence as:
                        lerp(current, previous_warped_with_flow, confidence*0.9)
         ========================================================================
