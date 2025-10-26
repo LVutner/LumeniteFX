@@ -193,7 +193,7 @@ float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
     return float2(x_values[4], y_values[4]);
 }
 
-float2 SpatialRegularization(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
+float2 BilateralFilter(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
 {
     #define LUMA_SIGMA 0.1
     #define SPATIAL_SIGMA 1.5
@@ -668,29 +668,29 @@ float4 PS_Debug(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     }
 }
 
-float2 PS_SpatialRegularizationL3(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float2 PS_SpatialFilterL3(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
     return Median9(sCoarseFlowL3_A, uv, rcp(tex2Dsize(sCoarseFlowL3_A, 0)), 6);
 }
 
-float2 PS_SpatialRegularizationL2(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float2 PS_SpatialFilterL2(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
     return Median9(sCoarseFlowL2_A, uv, rcp(tex2Dsize(sCoarseFlowL2_A, 0)), 5);
 }
 
-float2 PS_SpatialRegularizationL1(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float2 PS_SpatialFilterL1(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
     return Median9(sCoarseFlowL1_A, uv, rcp(tex2Dsize(sCoarseFlowL1_A, 0)), 4);
 }
 
-float2 PS_SpatialRegularizationL0(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float2 PS_SpatialFilterL0(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
     return Median9(sCoarseFlowL0_A, uv, rcp(tex2Dsize(sCoarseFlowL0_A, 0)), 3);
 }
 
-float2 PS_SpatialRegularizationDense(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
+float2 PS_SmoothFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 {
-    return SpatialRegularization(sDenseFlow_A, uv, rcp(tex2Dsize(sDenseFlow_A, 0)), 2);
+    return BilateralFilter(sDenseFlow_A, uv, rcp(tex2Dsize(sDenseFlow_A, 0)), 2);
 }
 
 float PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
@@ -756,23 +756,23 @@ technique LumaFlow <
 
     // Coarse Flow Level 3
     pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL3; RenderTarget = tCoarseFlowL3_A; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialRegularizationL3; RenderTarget = tCoarseFlowL3_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL3; RenderTarget = tCoarseFlowL3_B; }
 
     // Coarse Flow Level 2
     pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL2; RenderTarget = tCoarseFlowL2_A; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialRegularizationL2; RenderTarget = tCoarseFlowL2_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL2; RenderTarget = tCoarseFlowL2_B; }
 
     // Coarse Flow Level 1
     pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL1; RenderTarget = tCoarseFlowL1_A; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialRegularizationL1; RenderTarget = tCoarseFlowL1_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL1; RenderTarget = tCoarseFlowL1_B; }
 
     // Coarse Flow Level 0
     pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL0; RenderTarget = tCoarseFlowL0_A; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialRegularizationL0; RenderTarget = tCoarseFlowL0_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL0; RenderTarget = tCoarseFlowL0_B; }
 
     // Dense Flow and Features
     pass { VertexShader = PostProcessVS; PixelShader = PS_DenseFlow; RenderTarget = tDenseFlow_A; }
-    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialRegularizationDense; RenderTarget = tDenseFlow_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SmoothFlow; RenderTarget = tDenseFlow_B; }
 
     // === Global Flow
     pass { VertexShader = PostProcessVS; PixelShader = PS_GlobalFlow; RenderTarget = tGlobalFlow; }
