@@ -15,6 +15,8 @@
         Filename   : LumaFlow.fx
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - An Optical Flow shader for ReShade.
+        License    : Creative Commons Attribution Non Commercial 4.0 International
+                     CC-BY-NC 4.0 (SPDX Identifier)
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
                        "sMotionConfidence" samplers
                      - Example: For reprojection, you would use confidence as:
