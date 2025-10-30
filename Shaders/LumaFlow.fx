@@ -13,16 +13,18 @@
         ========================================================================
 
         Filename   : LumaFlow.fx
+        Version    : 1.0.0
         Author     : Afzaal (Kaidō)
-        Description: LumaFlow - An Optical Flow shader for ReShade.
+        Description: LumaFlow - A Dense Real-time Optical Flow for ReShade.
         License    : Creative Commons Attribution Non Commercial 4.0 International
                      CC-BY-NC-4.0 (SPDX Identifier)
-        Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
-                       "sMotionConfidence" samplers
-                     - Example: For reprojection, you would use confidence as:
-                       lerp(current, previous_warped_with_flow, confidence*0.9)
+        Usage Guide: Use the flow field "sTexMotionVectorsSampler" and accompanying
+                     "sMotionConfidence" samplers
+                     Example: For reprojection, you would use confidence as:
+                     lerp(current, previous_warped_with_flow, confidence*0.9)
 
         GitHub     : https://github.com/umar-afzaal/LumeniteFX
+        Discord    : https://discord.gg/HN5ddr3U
         ========================================================================
 */
 
@@ -92,7 +94,7 @@ sampler2D sPrevBackBuffer { Texture = tPrevBackBuffer; MagFilter = LINEAR; MinFi
 texture2D tConfidence { Width = BUFFER_WIDTH/4; Height = BUFFER_HEIGHT/4; Format = R16F; };
 sampler2D sConfidence { Texture = tConfidence; MagFilter = POINT; MinFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; };
 
-//=== Export Flow - use these
+//=== Export Flow - use these in your shaders to access the final flow field
 texture2D texMotionVectors { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RG16F; };
 sampler2D sTexMotionVectorsSampler { Texture = texMotionVectors; MagFilter = POINT; MinFilter = POINT; AddressU = CLAMP; AddressV = CLAMP; AddressW = CLAMP; };
 
@@ -320,7 +322,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     // Take the initial prediction from the coarser level.
     // Use that prediction to virtually "warp" the previous frame so it's roughly aligned with the current frame.
     // Search for the small, remaining correction (the residual) that fine-tunes this alignment.
-    // The final motion vector is prediction + residual. Searching for residual is also more stable numerically
+    // The final motion vector is prediction + residual. Searching for residual is also more stable numerically.
     texel_size = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(mip2));
 
     // Search for residual correction around prediction, not total motion
@@ -378,7 +380,6 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     float cost_up     = ZAD(sCurrLuma, sPrevLuma, uv, uv + integer_match + float2(0, texel_size.y), texel_size, mip2);
 
     // 2. Calculate the sub-pixel offset using the formula for a parabola's vertex.
-    // The formula is: offset = (cost_before - cost_after) / (2 * (cost_before + cost_after - 2 * cost_center))
     // Also add epsilon for flat surfaces.
     float2 subpixel_offset;
     subpixel_offset.x = (cost_left - cost_right) / (2.0 * (cost_left + cost_right - 2.0 * match_cost) + EPSILON);
@@ -757,7 +758,7 @@ void PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD, out float2 fl
 ==============================================================================*/
 technique LumaFlow <
     ui_label = "LumaFlow";
-    ui_tooltip = "Dense Optical Flow for ReShade by Kaidō.";
+    ui_tooltip = "Dense Real-time Optical Flow for ReShade by Kaidō.";
 >
 {
     //=== Luma pyramid
