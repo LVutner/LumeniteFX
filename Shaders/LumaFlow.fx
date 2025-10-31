@@ -20,8 +20,9 @@
                      CC-BY-NC-4.0 (SPDX Identifier)
         Usage Guide: Use the flow field "sTexMotionVectorsSampler" and accompanying
                      "sMotionConfidence" samplers
-                     Example: For reprojection, you would use confidence as:
-                     lerp(current, previous_warped_with_flow, confidence*0.9)
+                     Example: For temporal accumulation with reprojection,
+                     you would use confidence as:
+                     lerp(curr, prev_warped, confidence*0.9)
 
         GitHub     : https://github.com/umar-afzaal/LumeniteFX
         Discord    : https://discord.gg/HN5ddr3U
