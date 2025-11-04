@@ -1,5 +1,5 @@
 # LumeniteFX Shaders
-Any questions, comments or need help? Join the Lumenite discord server: https://discord.gg/HN5ddr3U
+Any questions, comments or need help? Join the Lumenite discord server: https://discord.gg/zrJ6KzdN
 
 ## LumaFlow
 ![LumaFlow_Poster](https://github.com/umar-afzaal/asset-repo/blob/mainline/lumenitefx/LumaFlow_poster.jpg)
