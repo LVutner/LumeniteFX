@@ -17,7 +17,9 @@
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - A Dense Real-time Optical Flow for ReShade.
         License    : Creative Commons Attribution Non Commercial 4.0 International
-                     CC-BY-NC-4.0 (SPDX Identifier)
+                     SPDX Identifier: CC-BY-NC-4.0
+                     You may get a summary of the license and the full legal code
+                     at https://creativecommons.org/licenses/by-nc/4.0/
         Usage Guide: Use the flow field "sTexMotionVectorsSampler" and accompanying
                      "sMotionConfidence" samplers
                      Example: For temporal accumulation with reprojection,
