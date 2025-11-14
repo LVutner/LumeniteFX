@@ -157,7 +157,6 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
 
     // Now, we calculate SAD on the zero-mean (normalized) samples
     float err = 0.0;
-    [unroll]
     for(int i = 0; i < 9; i++)
     {
         err += abs((samples_a[i] - mean_a) - (samples_b[i] - mean_b));
@@ -222,10 +221,8 @@ float2 BilateralFilter(sampler2D motion_tex, float2 uv, float2 texel_size, int m
     float2 flow_sum = 0.0;
     float weight_sum = 0.0;
 
-    [unroll]
     for (int y = -2; y <= 2; ++y)
     {
-        [unroll]
         for (int x = -2; x <= 2; ++x)
         {
             float2 offset = float2(x, y) * texel_size;
@@ -425,7 +422,6 @@ float PS_CurrLuma(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                     1               // (0,2)
     };
 
-    [unroll]
     for(int i = 0; i < 13; i++)
     {
         float2 sample_uv = uv + float2(DENSE_13[i]) * texel_size;
@@ -760,7 +756,7 @@ void PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD, out float2 fl
     TECHNIQUE
 ==============================================================================*/
 technique LumaFlow <
-    ui_label = "LumaFlow";
+    ui_label = "Lumenite: LumaFlow";
     ui_tooltip = "Dense Real-time Optical Flow for ReShade by Kaidō.";
 >
 {
