@@ -27,7 +27,7 @@
                      lerp(curr, prev_warped, confidence*0.9)
 
         GitHub     : https://github.com/umar-afzaal/LumeniteFX
-        Discord    : https://discord.gg/HN5ddr3U
+        Discord    : https://discord.gg/deXJrW2dx6
         ========================================================================
 */
 
