@@ -16,15 +16,16 @@
         Version    : 1.0.0
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - A Dense Real-time Optical Flow for ReShade.
-        License    : Creative Commons Attribution Non Commercial 4.0 International
-                     SPDX Identifier: CC-BY-NC-4.0
-                     You may get a summary of the license and the full legal code
-                     at https://creativecommons.org/licenses/by-nc/4.0/
-        Usage Guide: Use the flow field "sTexMotionVectorsSampler" and accompanying
-                     "sMotionConfidence" samplers
-                     Example: For temporal accumulation with reprojection,
-                     you would use confidence as:
-                     lerp(curr, prev_warped, confidence*0.9)
+        License    : - Creative Commons Attribution Non Commercial 4.0 International
+                     - SPDX Identifier: CC-BY-NC-4.0
+                     - You may get a summary of the license and the full legal code
+                       at https://creativecommons.org/licenses/by-nc/4.0/
+        Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
+                       "sMotionConfidence" samplers
+                     - Example: For temporal accumulation with reprojection,
+                       you would use confidence as:
+                       lerp(curr, prev_warped, confidence*0.9)
+                     - The use of confidence output from lumaflow is mandatory.
 
         GitHub     : https://github.com/umar-afzaal/LumeniteFX
         Discord    : https://discord.gg/deXJrW2dx6
@@ -157,6 +158,7 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
 
     // Now, we calculate SAD on the zero-mean (normalized) samples
     float err = 0.0;
+    [loop]
     for(int i = 0; i < 9; i++)
     {
         err += abs((samples_a[i] - mean_a) - (samples_b[i] - mean_b));
@@ -183,8 +185,10 @@ float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
     }
 
     // Partial bubble sort - only guarantees median (5th element) is correct
+    [loop]
     for(int k = 0; k < 5; k++)
     {
+        [loop]
         for(int i = 0; i < 8 - k; i++)  // Skip already-bubbled tail
         {
             if(x_values[i] > x_values[i+1])
@@ -221,8 +225,10 @@ float2 BilateralFilter(sampler2D motion_tex, float2 uv, float2 texel_size, int m
     float2 flow_sum = 0.0;
     float weight_sum = 0.0;
 
+    [loop]
     for (int y = -2; y <= 2; ++y)
     {
+        [loop]
         for (int x = -2; x <= 2; ++x)
         {
             float2 offset = float2(x, y) * texel_size;
@@ -422,6 +428,7 @@ float PS_CurrLuma(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                     1               // (0,2)
     };
 
+    [loop]
     for(int i = 0; i < 13; i++)
     {
         float2 sample_uv = uv + float2(DENSE_13[i]) * texel_size;
@@ -536,6 +543,7 @@ float2 PS_GlobalFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     float x_values[32], y_values[32];
     int count = 0;
 
+    [loop]
     for(int i = 0; i < 32; i++)
     {
         float depth = GetDepth(SPARSE_SCREEN[i]);
@@ -552,8 +560,10 @@ float2 PS_GlobalFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 
     // Partial bubble sort to find median
     int mid = count / 2;
+    [loop]
     for(int k = 0; k <= mid; k++)
     {
+        [loop]
         for(int j = 0; j < count - 1 - k; j++)
         {
             if(x_values[j] > x_values[j+1])
