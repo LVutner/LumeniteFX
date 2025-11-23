@@ -145,6 +145,7 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
     float samples_a[9], samples_b[9];
     float mean_a = 0.0, mean_b = 0.0;
 
+    [unroll]
     for(int i = 0; i < 9; i++)
     {
         float2 offset = float2(SPARSE_9[i]) * texel_size;
@@ -158,7 +159,8 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
 
     // Now, we calculate SAD on the zero-mean (normalized) samples
     float err = 0.0;
-    [loop]
+
+    [unroll]
     for(int i = 0; i < 9; i++)
     {
         err += abs((samples_a[i] - mean_a) - (samples_b[i] - mean_b));
@@ -314,6 +316,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     float min_cost = 1e6;
     float2 prediction = candidates[0];
 
+    [unroll]
     for (int i = 0; i < 12; i++)
     {
         float cost = ZAD(sCurrLuma, sPrevLuma, uv, uv + candidates[i], texel_size, mip1);
@@ -336,6 +339,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     float match_cost = ZAD(sCurrLuma, sPrevLuma, uv, uv + prediction + residual, texel_size, mip2);
     int match_i = 8; // Start with "check all neighbors" state
 
+    [loop]
     for (int search = 0; search < SEARCH_ITER; search++)
     {
         int i = c8_it[match_i].x;
@@ -428,7 +432,7 @@ float PS_CurrLuma(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                     1               // (0,2)
     };
 
-    [loop]
+    [unroll]
     for(int i = 0; i < 13; i++)
     {
         float2 sample_uv = uv + float2(DENSE_13[i]) * texel_size;
