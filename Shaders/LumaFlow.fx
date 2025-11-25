@@ -333,8 +333,6 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     // Search for the small, remaining correction (the residual) that fine-tunes this alignment.
     // The final motion vector is prediction + residual. Searching for residual is also more stable numerically.
     texel_size = rcp(float2(BUFFER_WIDTH, BUFFER_HEIGHT) / exp2(mip2));
-
-    // Search for residual correction around prediction, not total motion
     float2 residual = 0.0;
     float match_cost = ZAD(sCurrLuma, sPrevLuma, uv, uv + prediction + residual, texel_size, mip2);
     int match_i = 8; // Start with "check all neighbors" state
