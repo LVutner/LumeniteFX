@@ -13,7 +13,7 @@
         ========================================================================
 
         Filename   : LumaFlow.fx
-        Version    : 1.0.0
+        Version    : 2025.11.30
         Author     : Afzaal (Kaidō)
         Description: LumaFlow - A Dense Real-time Optical Flow for ReShade.
         License    : - Creative Commons Attribution Non Commercial 4.0 International
