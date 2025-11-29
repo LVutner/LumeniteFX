@@ -1,5 +1,9 @@
 # LumeniteFX Shaders
-Any questions, comments or need help? Join the Lumenite discord server: https://discord.gg/deXJrW2dx6
+Any questions, comments or need help? Join the LumeniteFX discord server: https://discord.gg/deXJrW2dx6
+
+## RTAO - RayTraced Ambient Occlusion
+![RTEffects_Poster](https://github.com/umar-afzaal/asset-repo/blob/mainline/lumenitefx/RTAO_poster.jpg)
+Ambient Occlusion shader for ReShade with the ray tracing technique. Optimized to the moon and back for scoring 0.65ms on the Sponza Atrium scene at 1440p (5070Ti).
 
 ## LumaFlow
 ![LumaFlow_Poster](https://github.com/umar-afzaal/asset-repo/blob/mainline/lumenitefx/LumaFlow_poster.jpg)
