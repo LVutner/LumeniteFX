@@ -401,7 +401,7 @@ float PS_ATrous_Pass2(VSOUT input) : SV_Target
         if (DEBUG_VIEW) return float4(displayAO.xxx * depthFade, 1.0);
         float3 base = GetColor(input.uv);
         base *= displayAO;
-        return float4(saturate(base), 1.0);
+        return float4(base, 1.0);
     }
 
     float PS_StoreAO(VSOUT input) : SV_Target
@@ -423,7 +423,7 @@ float PS_ATrous_Pass2(VSOUT input) : SV_Target
         if (DEBUG_VIEW) return float4(ao.xxx * depthFade, 1.0);
         float3 base = GetColor(input.uv);
         base *= ao;
-        return float4(saturate(base), 1.0);
+        return float4(base, 1.0);
     }
 #endif
 
