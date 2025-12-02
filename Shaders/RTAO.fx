@@ -59,10 +59,12 @@ uniform bool DEBUG_VIEW <
     ui_tooltip = "Debug view for the AO. Shows raw AO.";
 > = 0;
 
-uniform bool CHECKERBOARD_RENDERING <
-    ui_label = "Half-Rate Rendering";
-    ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of AO Mask.";
-> = 0;
+#if TEMPORAL_FILTER
+    uniform bool CHECKERBOARD_RENDERING <
+        ui_label = "Half-Rate Rendering";
+        ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of AO Mask.";
+    > = 0;
+#endif
 
 uniform float DEPTH_BOUNDARY <
     ui_type = "slider";
