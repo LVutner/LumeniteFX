@@ -135,10 +135,10 @@ float3 GetColor(float2 uv)
 // {
 //     static const int2 SPARSE_9[9] = {
 //     	int2(-1,-1), int2(5,-1),
-//     	int2(1,1), int2(3,1),
+//     	int2(1,1),   int2(3,1),
 //     	int2(2,2),
-//     	int2(1,3), int2(3,3),
-//     	int2(-1,5), int2(5,5)
+//     	int2(1,3),   int2(3,3),
+//     	int2(-1,5),  int2(5,5)
 //     };
 //
 //     // Gather samples and calculate the mean for each patch
@@ -173,10 +173,10 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
 {
     static const int2 SPARSE_9[9] = {
     	int2(-1,-1), int2(5,-1),
-    	int2(1,1), int2(3,1),
+    	int2(1,1),   int2(3,1),
     	int2(2,2),
-    	int2(1,3), int2(3,3),
-    	int2(-1,5), int2(5,5)
+    	int2(1,3),   int2(3,3),
+    	int2(-1,5),  int2(5,5)
     };
 
     // Gather samples and calculate the mean for each patch
@@ -843,7 +843,7 @@ void PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD, out float2 fl
 ==============================================================================*/
 technique LumaFlow <
     ui_label = "Lumenite: LumaFlow";
-    ui_tooltip = "Dense Real-time Optical Flow for ReShade by Kaidō.";
+    ui_tooltip = "Dense Real-time Optical Flow for ReShade by Kaido.";
 >
 {
     //=== Luma pyramid
