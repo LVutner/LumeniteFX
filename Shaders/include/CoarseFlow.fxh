@@ -260,7 +260,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     #define SEARCH_ITER 10
 
     // 8-directional search pattern
-    static const int2 c8[8] = {
+    int2 c8[8] = {
         int2(-1, 1), int2(0, 1), int2(1, 1),
         int2(-1, 0),             int2(1, 0),
         int2(-1,-1), int2(0,-1), int2(1,-1)
@@ -268,7 +268,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
 
     // c8_it: Smart lookup table - each int2 holds (start_index, end_index) for neighbor checking
     // Avoids redundant checks by only examining neighbors not yet visited in current descent step
-    static const int2 c8_it[9] = {
+    int2 c8_it[9] = {
         int2(6, 3), // Direction 0: came from top-left, check bottom-left to right
         int2(0, 3), // Direction 1: came from top, check top-left to right
         int2(0, 5), // Direction 2: came from top-right, check top-left to bottom
