@@ -166,29 +166,58 @@ float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texe
     };
 
     // Gather samples and calculate the mean for each patch
-    float samples_a[9], samples_b[9];
-    float mean_a = 0.0, mean_b = 0.0;
+    float2 offset0 = float2(SPARSE_9[0]) * texel_size;
+    float samples_a0 = tex2Dlod(cur, float4(pos_a + offset0, 0, mip)).r;
+    float samples_b0 = tex2Dlod(prev, float4(pos_b + offset0, 0, mip)).r;
 
-    [unroll]
-    for(int i = 0; i < 9; i++)
-    {
-        float2 offset = float2(SPARSE_9[i]) * texel_size;
-        samples_a[i] = tex2Dlod(cur,  float4(pos_a + offset, 0, mip)).r;
-        samples_b[i] = tex2Dlod(prev, float4(pos_b + offset, 0, mip)).r;
-        mean_a += samples_a[i];
-        mean_b += samples_b[i];
-    }
-    mean_a /= 9.0;
-    mean_b /= 9.0;
+    float2 offset1 = float2(SPARSE_9[1]) * texel_size;
+    float samples_a1 = tex2Dlod(cur, float4(pos_a + offset1, 0, mip)).r;
+    float samples_b1 = tex2Dlod(prev, float4(pos_b + offset1, 0, mip)).r;
+
+    float2 offset2 = float2(SPARSE_9[2]) * texel_size;
+    float samples_a2 = tex2Dlod(cur, float4(pos_a + offset2, 0, mip)).r;
+    float samples_b2 = tex2Dlod(prev, float4(pos_b + offset2, 0, mip)).r;
+
+    float2 offset3 = float2(SPARSE_9[3]) * texel_size;
+    float samples_a3 = tex2Dlod(cur, float4(pos_a + offset3, 0, mip)).r;
+    float samples_b3 = tex2Dlod(prev, float4(pos_b + offset3, 0, mip)).r;
+
+    float2 offset4 = float2(SPARSE_9[4]) * texel_size;
+    float samples_a4 = tex2Dlod(cur, float4(pos_a + offset4, 0, mip)).r;
+    float samples_b4 = tex2Dlod(prev, float4(pos_b + offset4, 0, mip)).r;
+
+    float2 offset5 = float2(SPARSE_9[5]) * texel_size;
+    float samples_a5 = tex2Dlod(cur, float4(pos_a + offset5, 0, mip)).r;
+    float samples_b5 = tex2Dlod(prev, float4(pos_b + offset5, 0, mip)).r;
+
+    float2 offset6 = float2(SPARSE_9[6]) * texel_size;
+    float samples_a6 = tex2Dlod(cur, float4(pos_a + offset6, 0, mip)).r;
+    float samples_b6 = tex2Dlod(prev, float4(pos_b + offset6, 0, mip)).r;
+
+    float2 offset7 = float2(SPARSE_9[7]) * texel_size;
+    float samples_a7 = tex2Dlod(cur, float4(pos_a + offset7, 0, mip)).r;
+    float samples_b7 = tex2Dlod(prev, float4(pos_b + offset7, 0, mip)).r;
+
+    float2 offset8 = float2(SPARSE_9[8]) * texel_size;
+    float samples_a8 = tex2Dlod(cur, float4(pos_a + offset8, 0, mip)).r;
+    float samples_b8 = tex2Dlod(prev, float4(pos_b + offset8, 0, mip)).r;
+
+    // Calculate mean
+    float mean_a = (samples_a0 + samples_a1 + samples_a2 + samples_a3 + samples_a4 +
+                    samples_a5 + samples_a6 + samples_a7 + samples_a8) / 9.0;
+    float mean_b = (samples_b0 + samples_b1 + samples_b2 + samples_b3 + samples_b4 +
+                    samples_b5 + samples_b6 + samples_b7 + samples_b8) / 9.0;
 
     // Now, we calculate SAD on the zero-mean (normalized) samples
-    float err = 0.0;
-
-    [unroll]
-    for(int i = 0; i < 9; i++)
-    {
-        err += abs((samples_a[i] - mean_a) - (samples_b[i] - mean_b));
-    }
+    float err = abs((samples_a0 - mean_a) - (samples_b0 - mean_b));
+    err += abs((samples_a1 - mean_a) - (samples_b1 - mean_b));
+    err += abs((samples_a2 - mean_a) - (samples_b2 - mean_b));
+    err += abs((samples_a3 - mean_a) - (samples_b3 - mean_b));
+    err += abs((samples_a4 - mean_a) - (samples_b4 - mean_b));
+    err += abs((samples_a5 - mean_a) - (samples_b5 - mean_b));
+    err += abs((samples_a6 - mean_a) - (samples_b6 - mean_b));
+    err += abs((samples_a7 - mean_a) - (samples_b7 - mean_b));
+    err += abs((samples_a8 - mean_a) - (samples_b8 - mean_b));
 
     return ((err / 9.0) + EPSILON);
 }
@@ -302,7 +331,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     float min_cost = 1e6;
     float2 prediction = candidates[0];
 
-    [unroll]
+    [loop]
     for (int i = 0; i < 12; i++)
     {
         float cost = ZAD(sCurrLuma, sPrevLuma, uv, uv + candidates[i], texel_size, mip1);
@@ -418,7 +447,7 @@ float PS_CurrLuma(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
                     1               // (0,2)
     };
 
-    [unroll]
+    [loop]
     for(int i = 0; i < 13; i++)
     {
         float2 sample_uv = uv + float2(DENSE_13[i]) * texel_size;
@@ -553,11 +582,13 @@ float2 PS_GlobalFlow(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     // Partial bubble sort to find median
     int mid = count / 2;
     [loop]
-    for(int k = 0; k <= mid; k++)
+    for(int k = 0; k < 32; k++)
     {
+        if(k > mid) break;
         [loop]
-        for(int j = 0; j < count - 1 - k; j++)
+        for(int j = 0; j < 32; j++)
         {
+            if(j >= count - 1 - k) break;
             if(x_values[j] > x_values[j+1])
             {
                 float tmp = x_values[j];
