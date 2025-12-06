@@ -12,7 +12,7 @@
 
         ========================================================================
 
-        Filename   : ColorSpace.fxh
+        Filename   : ColorManagement.fxh
         Version    : 2025.12.03
         Author     : Afzaal (Kaidō)
         Description: Provides color management including color space detection,
@@ -30,8 +30,8 @@
         ========================================================================
 */
 
-#ifndef INCLUDE_COLORSPACE_FXH
-#define INCLUDE_COLORSPACE_FXH
+#ifndef INCLUDE_COLORMANAGEMENT_FXH
+#define INCLUDE_COLORMANAGEMENT_FXH
 
 /*-------------------.
 | :: PREPROCESSOR :: |
@@ -248,4 +248,4 @@ float3 GetColor(float2 uv)
     return ToLinearColorspace(color);
 }
 
-#endif // INCLUDE_COLORSPACE_FXH
+#endif // INCLUDE_COLORMANAGEMENT_FXH
