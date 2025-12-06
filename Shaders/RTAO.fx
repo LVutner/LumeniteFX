@@ -371,7 +371,7 @@ float PS_ATrous_Pass2(VSOUT input) : SV_Target
 
 //=== Composition
 #if TEMPORAL_FILTER
-    #include "./include/CoarseFlow.fxh"
+    #include "./include/MotionEstimation.fxh"
 
     float PS_Blend(VSOUT input) : SV_Target
     {
