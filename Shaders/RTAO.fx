@@ -26,6 +26,7 @@
 
 
 #include "ReShade.fxh"
+#include "./include/ColorManagement.fxh"
 
 /*------------------.
 | :: DEFINITIONS :: |
@@ -57,12 +58,14 @@ uniform int FRAME_COUNT < source = "framecount"; >;
 uniform bool DEBUG_VIEW <
     ui_label = "Show AO Mask";
     ui_tooltip = "Debug view for the AO. Shows raw AO.";
+    ui_category = "Ambient Occlusion";
 > = 0;
 
 #if TEMPORAL_FILTER
     uniform bool CHECKERBOARD_RENDERING <
         ui_label = "Half-Rate Rendering";
         ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of AO Mask.";
+        ui_category = "Ambient Occlusion";
     > = 0;
 #endif
 
@@ -71,6 +74,7 @@ uniform float DEPTH_BOUNDARY <
     ui_min = 0.001; ui_max = 0.999; ui_step = 0.001;
     ui_label = "AO Range";
     ui_tooltip = "The Z+ range/depth in which the effect is applied.";
+    ui_category = "Ambient Occlusion";
     hidden = false;
 > = 0.6;
 
@@ -79,6 +83,7 @@ uniform float DEPTH_FADE_START <
     ui_min = 0.1; ui_max = 1.0; ui_step = 0.01;
     ui_label = "Z+ Fade Start (%)";
     ui_tooltip = "Z+ fraction where effect starts fading out (relative to Z+ boundary)";
+    ui_category = "Ambient Occlusion";
     hidden = true;
 > = 0.75;
 
@@ -88,6 +93,7 @@ uniform float AO_INTENSITY <
     ui_min = 0.0; ui_max = 1.0; ui_step = 0.01;
     ui_label = "AO Strength";
     ui_tooltip = "Controls the intensity of the ambient occlusion effect.";
+    ui_category = "Ambient Occlusion";
 > = 1.0;
 
 /*---------------------.
@@ -118,18 +124,6 @@ sampler sBlueNoise { Texture = tBlueNoise; AddressU = REPEAT; AddressV = REPEAT;
 bool CheckerboardSkip(uint2 pos)
 {
     return (((pos.x + pos.y) & 1) == (FRAME_COUNT & 1));
-}
-
-float GetLuminance(float3 color)
-{
-    return dot(color, float3(0.2126, 0.7152, 0.0722));
-}
-
-float3 GetColor(float2 uv)
-{
-    float3 color = tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
-    // Optionally, do some processing and then return
-    return color;
 }
 
 float GetDepth(float2 uv)
@@ -400,10 +394,16 @@ float PS_ATrous_Pass2(VSOUT input) : SV_Target
         float ao = 1.0 - occlusion;
         float depthFade = CalculateDepthFade(depth);
         float displayAO = lerp(1.0, ao, depthFade);
-        if (DEBUG_VIEW) return float4(displayAO.xxx * depthFade, 1.0);
+        if (DEBUG_VIEW) {
+            #if BUFFER_COLOR_SPACE > 1
+                return float4(ToOutputColorspace(displayAO.xxx*depthFade), 1.0);
+            #else
+                return float4(displayAO.xxx*depthFade, 1.0);
+            #endif
+        }
         float3 base = GetColor(input.uv);
         base *= displayAO;
-        return float4(base, 1.0);
+        return float4(ToOutputColorspace(base), 1.0);
     }
 
     float PS_StoreAO(VSOUT input) : SV_Target
@@ -422,10 +422,16 @@ float PS_ATrous_Pass2(VSOUT input) : SV_Target
         float depthFade = CalculateDepthFade(depth);
         float ao = ATrousStep(input.uv, sAO1, 4);
         ao = lerp(1.0, ao, depthFade);
-        if (DEBUG_VIEW) return float4(ao.xxx * depthFade, 1.0);
+        if (DEBUG_VIEW) {
+            #if BUFFER_COLOR_SPACE > 1
+                return float4(ToOutputColorspace(ao.xxx*depthFade), 1.0);
+            #else
+                return float4(ao.xxx*depthFade, 1.0);
+            #endif
+        }
         float3 base = GetColor(input.uv);
         base *= ao;
-        return float4(base, 1.0);
+        return float4(ToOutputColorspace(base), 1.0);
     }
 #endif
 
