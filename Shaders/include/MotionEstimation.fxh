@@ -12,7 +12,7 @@
 
         ========================================================================
 
-        Filename   : CoarseFlow.fxh
+        Filename   : MotionEstimation.fxh
         Version    : 2025.11.21
         Author     : Afzaal (Kaidō)
         Description: Motion data for other LumeniteFX Shaders.
@@ -24,6 +24,8 @@
         ========================================================================
 */
 
+#ifndef INCLUDE_MOTIONESTIMATION_FXH
+#define INCLUDE_MOTIONESTIMATION_FXH
 
 /*---------------.
 | :: TEXTURES :: |
@@ -64,7 +66,7 @@ sampler2D sGlobalFlow { Texture = tGlobalFlow; };
 texture2D tPrevCoarseFlow { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = RG16F; };
 sampler2D sPrevFrameFlow { Texture = tPrevCoarseFlow; MagFilter = POINT; MinFilter = POINT; };
 
-texture2D tPrevBackBuffer { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA8; };
+texture2D tPrevBackBuffer { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler2D sPrevBackBuffer { Texture = tPrevBackBuffer; MagFilter = LINEAR; MinFilter = LINEAR; AddressU = CLAMP; AddressV = CLAMP; };
 
 texture2D tFlowConfidence { Width = BUFFER_WIDTH/8; Height = BUFFER_HEIGHT/8; Format = R16F; };
@@ -424,7 +426,7 @@ float PS_CurrLuma(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
         float2 sample_uv = uv + float2(DENSE_13[i]) * texel_size;
         float3 color = GetColor(sample_uv);
         float luma = dot(color, float3(0.2126, 0.7152, 0.0722));
-
+        luma = luma * rcp(1.0 + luma); // Reinhard compression for HDR stability
         float weight = weights[i];
         luma_sum += luma * weight;
         weight_sum += weight;
@@ -436,6 +438,7 @@ float PS_CurrLuma(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
     // 90% smooth + 10% original detail (Add tiny amount of original detail back to preserve important features)
     float3 center_color = GetColor(uv);
     float center_luma = dot(center_color, float3(0.2126, 0.7152, 0.0722));
+    center_luma = center_luma * rcp(1.0 + center_luma);
     return lerp(center_luma, smooth_luma, 0.9);
 }
 
@@ -663,3 +666,5 @@ float PS_ComputeConfidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_
 
     return (consistency_confidence * length_confidence * photometric_confidence);
 }
+
+#endif // INCLUDE_MOTIONESTIMATION_FXH
