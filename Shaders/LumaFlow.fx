@@ -22,7 +22,7 @@
                        at https://creativecommons.org/licenses/by-nc/4.0/
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
                        "sMotionConfidence" samplers
-                     - Example: For reprojection and history blending, use confidence as:
+                     - Example: For blending reprojected history, use confidence as:
                            | lerp(current, previous_warped, confidence*0.9)
                      - This lerp creates an exponential moving average blend. Feeding the
                        output back recursively creates a mathematical series where older
