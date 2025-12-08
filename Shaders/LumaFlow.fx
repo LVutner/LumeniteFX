@@ -22,15 +22,15 @@
                        at https://creativecommons.org/licenses/by-nc/4.0/
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
                        "sMotionConfidence" samplers
-                     - Example: For reprojection and history blend, use confidence as:
-                       `lerp(current, previous_warped, confidence*0.9)`
-                     - This lerp created an exponential moving average blend. Feeding the
+                     - Example: For reprojection and history blending, use confidence as:
+                           | lerp(current, previous_warped, confidence*0.9)
+                     - This lerp creates an exponential moving average blend. Feeding the
                        output back recursively creates a mathematical series where older
                        frames hold exponentially less weight over time.
-                     - Advanced: Apply logarithmic compression to confidence for temporal
+                     - Apply logarithmic compression to confidence for temporal
                        accumulation of samples. Boost undersampled regions preferentially.
                        Compress the range as:
-                       `saturate(confidence + log2(2.0 - confidence) * 0.45)`
+                           | saturate(confidence + log2(2.0 - confidence) * 0.45)
                        then lerp as above. Boost factor 0.45-0.5 balances convergence
                        against ghosting artifacts. Tune as necessary.
                      - (NOTE: The use of confidence output from lumaflow is mandatory.)
