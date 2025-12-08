@@ -3,7 +3,7 @@ Any questions, comments or need help? Join the LumeniteFX discord server: https:
 
 ## RTAO - Ray Traced Ambient Occlusion
 ![RTEffects_Poster](https://github.com/umar-afzaal/asset-repo/blob/mainline/lumenitefx/RTAO_poster.jpg)
-Ambient Occlusion shader for ReShade with the ray tracing technique. (Photo from RTAO Super - A WiP version of RTAO)
+Ambient Occlusion shader for ReShade with the ray tracing technique. (Photo from RTAO Super - A WiP version of RTAO that adds large-scale occlusion)
 
 ## LightCompositor - Indirect Lighting Effects Pack
 ![RTEffects_Poster](https://github.com/umar-afzaal/asset-repo/blob/mainline/lumenitefx/RTEffects_poster.jpg)
