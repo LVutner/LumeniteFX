@@ -22,10 +22,16 @@
                        at https://creativecommons.org/licenses/by-nc/4.0/
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
                        "sMotionConfidence" samplers
-                     - Example: For temporal accumulation with reprojection,
-                       you would use confidence as:
-                       lerp(curr, prev_warped, confidence*0.9)
-                     - The use of confidence output from lumaflow is mandatory.
+                     - Example: For basic reprojection, use confidence as:
+                       `lerp(current, previous_warped, confidence*0.9)`
+                     - Advanced: Apply logarithmic compression to confidence for temporal
+                       accumulation of samples. Boost undersampled regions preferentially.
+                       Compress the range as:
+                       `compressedConf = saturate(confidence + log2(2.0 - confidence) * 0.45)`
+                       then lerp as above. Reduces temporal variance during reprojection.
+                       Boost factor 0.45-0.5 balances convergence against ghosting artifacts
+                       from personal experience.
+                     - (NOTE: The use of confidence output from lumaflow is mandatory.)
 
         GitHub     : https://github.com/umar-afzaal/LumeniteFX
         Discord    : https://discord.gg/deXJrW2dx6
