@@ -28,9 +28,8 @@
                        accumulation of samples. Boost undersampled regions preferentially.
                        Compress the range as:
                        `compressedConf = saturate(confidence + log2(2.0 - confidence) * 0.45)`
-                       then lerp as above. Reduces temporal variance during reprojection.
-                       Boost factor 0.45-0.5 balances convergence against ghosting artifacts
-                       from personal experience.
+                       then lerp as above. Boost factor 0.45-0.5 balances convergence against
+                       ghosting artifacts. Tune as necessary.
                      - (NOTE: The use of confidence output from lumaflow is mandatory.)
 
         GitHub     : https://github.com/umar-afzaal/LumeniteFX
