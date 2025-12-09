@@ -30,8 +30,7 @@
         ========================================================================
 */
 
-#ifndef INCLUDE_COLORMANAGEMENT_FXH
-#define INCLUDE_COLORMANAGEMENT_FXH
+#pragma once
 
 /*-------------------.
 | :: PREPROCESSOR :: |
@@ -247,5 +246,3 @@ float3 GetColor(float2 uv)
     float3 color = tex2Dlod(ReShade::BackBuffer, float4(uv, 0, 0)).rgb;
     return ToLinearColorspace(color);
 }
-
-#endif // INCLUDE_COLORMANAGEMENT_FXH

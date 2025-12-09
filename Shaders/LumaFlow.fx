@@ -15,9 +15,10 @@
         Filename   : LumaFlow.fx
         Version    : 2025.12.09
         Author     : Afzaal (Kaidō)
+        NOTE       : This file is standalone and has no other dependency in this repo.
         Description: LumaFlow - A Dense Real-time Optical Flow for ReShade.
-        License    : - Creative Commons Attribution Non Commercial 4.0 International
-                     - SPDX Identifier: CC-BY-NC-4.0
+        License    : Creative Commons Attribution Non Commercial 4.0 International
+                     (SPDX Identifier: CC-BY-NC-4.0)
                      - You may get a summary of the license and the full legal code
                        at https://creativecommons.org/licenses/by-nc/4.0/
         Usage Guide: - Use the flow field "sTexMotionVectorsSampler" and accompanying
@@ -783,8 +784,8 @@ void PS_ExportFlow(float4 pos : SV_Position, float2 uv : TEXCOORD, out float2 fl
 /*==============================================================================
     TECHNIQUE
 ==============================================================================*/
-technique LumaFlow <
-    ui_label = "Lumenite: LumaFlow";
+technique Lumenite_LumaFlow <
+    ui_label = "LUMENITE: LumaFlow";
     ui_tooltip = "Dense Real-time Optical Flow for ReShade by Kaido.";
 >
 {

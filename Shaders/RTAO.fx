@@ -13,7 +13,7 @@
         ========================================================================
 
         Filename   : RTAO.fx
-        Version    : 2025.11.30
+        Version    : 2025.12.10
         Author     : Afzaal (Kaidō)
         Description: RTAO - Ray Traced Ambient Occlusion
         License    : AGNYA License
@@ -24,36 +24,38 @@
         ========================================================================
 */
 
-
 #include "ReShade.fxh"
-#include "./include/ColorManagement.fxh"
+#include "LUMENITE_Projections.fxh"
+#include "LUMENITE_Helpers.fxh"
+#include "LUMENITE_ColorManagement.fxh"
+#include "LUMENITE_MotionEstimation.fxh"
 
 /*------------------.
 | :: DEFINITIONS :: |
 '------------------*/
 
-//=== Preprocessors
-#ifndef TEMPORAL_FILTER
-  #define TEMPORAL_FILTER 0
+#ifndef RESOLUTION_SCALING
+  #define RESOLUTION_SCALING 0
 #endif
 
-//=== Core Settings
-#define PI 3.14159265359
-#define EPSILON 1e-6
-#define FOV 60.0
-
-//=== Ambient Occlusion
 #define INITIAL_STEP_SCALE 0.9 // How small the very first step is (as a fraction of the average step size).
 #define STEP_GROWTH_FACTOR 1.2
-#define ATROUS_DEPTH_WEIGHT_SCALE 800.0
-#define ATROUS_NORMAL_WEIGHT_SCALE 13.0
 #define AO_MAX_MARCH_STEPS 15
 #define AO_RADIUS 0.02
+#define ATROUS_DEPTH_WEIGHT_SCALE 800.0
+#define ATROUS_NORMAL_WEIGHT_SCALE 13.0
+
+#if RESOLUTION_SCALING
+    #define ATROUS_DILATION_1 2
+    #define ATROUS_DILATION_2 4
+#else
+    #define ATROUS_DILATION_1 1
+    #define ATROUS_DILATION_2 2
+#endif
 
 /*---------------.
 | :: UNIFORMS :: |
 '---------------*/
-uniform int FRAME_COUNT < source = "framecount"; >;
 
 uniform bool DEBUG_VIEW <
     ui_label = "Show AO Mask";
@@ -61,13 +63,11 @@ uniform bool DEBUG_VIEW <
     ui_category = "Ambient Occlusion";
 > = 0;
 
-#if TEMPORAL_FILTER
-    uniform bool CHECKERBOARD_RENDERING <
-        ui_label = "Half-Rate Rendering";
-        ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of AO Mask.";
-        ui_category = "Ambient Occlusion";
-    > = 0;
-#endif
+uniform bool CHECKERBOARD_RENDERING <
+    ui_label = "Half-Framerate Rendering";
+    ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of the AO Mask.";
+    ui_category = "Ambient Occlusion";
+> = 1;
 
 uniform float DEPTH_BOUNDARY <
     ui_type = "slider";
@@ -87,7 +87,6 @@ uniform float DEPTH_FADE_START <
     hidden = true;
 > = 0.75;
 
-//=== Ambient Occlusion
 uniform float AO_INTENSITY <
     ui_type = "slider";
     ui_min = 0.0; ui_max = 1.0; ui_step = 0.01;
@@ -103,16 +102,19 @@ uniform float AO_INTENSITY <
 texture tNormals { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler sNormals { Texture = tNormals; };
 
+#if RESOLUTION_SCALING
+    texture tAOTrace { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16F; };
+    sampler sAOTrace { Texture = tAOTrace; AddressU = CLAMP; AddressV = CLAMP; };
+#endif
+
 texture tAO1 { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
 sampler sAO1 { Texture = tAO1; AddressU = CLAMP; AddressV = CLAMP; };
 
 texture tAO2 { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
 sampler sAO2 { Texture = tAO2; AddressU = CLAMP; AddressV = CLAMP; };
 
-#if TEMPORAL_FILTER
-    texture tPrevAO { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
-    sampler sPrevAO { Texture = tPrevAO; AddressU = CLAMP; AddressV = CLAMP; };
-#endif
+texture tPrevAO { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = R16F; };
+sampler sPrevAO { Texture = tPrevAO; AddressU = CLAMP; AddressV = CLAMP; };
 
 texture tBlueNoise < source = "lumenite_bluenoise256.png"; > { Width = 256; Height = 256; Format = R8; };
 sampler sBlueNoise { Texture = tBlueNoise; AddressU = REPEAT; AddressV = REPEAT; };
@@ -120,73 +122,6 @@ sampler sBlueNoise { Texture = tBlueNoise; AddressU = REPEAT; AddressV = REPEAT;
 /*--------------.
 | :: HELPERS :: |
 '--------------*/
-
-bool CheckerboardSkip(uint2 pos)
-{
-    return (((pos.x + pos.y) & 1) == (FRAME_COUNT & 1));
-}
-
-float GetDepth(float2 uv)
-{
-	return ReShade::GetLinearizedDepth(uv);
-}
-
-//=== Vertex Shader
-struct VSOUT
-{
-    float4 vpos              : SV_Position;
-    float2 uv                : TEXCOORD0;
-    float tan_half_fov_x     : TEXCOORD1;
-    float tan_half_fov_y     : TEXCOORD2;
-    float far_plane          : TEXCOORD3;
-    float inv_tan_half_fov_x : TEXCOORD4;
-    float inv_tan_half_fov_y : TEXCOORD5;
-};
-
-#define TAN_HALF_FOV_Y tan(radians(FOV * 0.5))
-#define ASPECT_RATIO_X_OVER_Y ((float)BUFFER_WIDTH / (float)BUFFER_HEIGHT)
-#define TAN_HALF_FOV_X TAN_HALF_FOV_Y * ASPECT_RATIO_X_OVER_Y
-#define INV_TAN_HALF_FOV_X rcp(TAN_HALF_FOV_X)
-#define INV_TAN_HALF_FOV_Y rcp(TAN_HALF_FOV_Y)
-
-VSOUT VS(uint id : SV_VertexID)
-{
-    VSOUT o;
-    o.uv.x = (id == 2) ? 2.0 : 0.0;
-    o.uv.y = (id == 1) ? 2.0 : 0.0;
-    o.vpos = float4(mad(o.uv.x, 2.0, -1.0), mad(o.uv.y, -2.0, 1.0), 0.0, 1.0);
-    o.tan_half_fov_x = TAN_HALF_FOV_X;
-    o.tan_half_fov_y = TAN_HALF_FOV_Y;
-    o.inv_tan_half_fov_x = INV_TAN_HALF_FOV_X;
-    o.inv_tan_half_fov_y = INV_TAN_HALF_FOV_Y;
-    o.far_plane = RESHADE_DEPTH_LINEARIZATION_FAR_PLANE;
-    return o;
-}
-
-//=== Projection Functions
-float3 UVToViewSpace(float2 uv, float linear_depth_vs, VSOUT ps_input)
-{
-    float3 view_pos;
-    float ndc_x = mad(uv.x, 2.0, -1.0);
-    float ndc_y = mad(uv.y, -2.0, 1.0);
-
-    view_pos.x = ndc_x * ps_input.tan_half_fov_x * linear_depth_vs;
-    view_pos.y = ndc_y * ps_input.tan_half_fov_y * linear_depth_vs;
-    view_pos.z = linear_depth_vs;
-    return view_pos;
-}
-
-float2 ViewSpaceToUV(float3 view_pos, VSOUT ps_input)
-{
-    float2 ndc;
-    float inv_z = rcp(view_pos.z);
-    ndc.x = view_pos.x * inv_z * ps_input.inv_tan_half_fov_x;
-    ndc.y = view_pos.y * inv_z * ps_input.inv_tan_half_fov_y;
-    float2 uv;
-    uv.x = mad(ndc.x, 0.5, 0.5);
-    uv.y = mad(ndc.y, -0.5, 0.5);
-    return uv;
-}
 
 //=== Hemisphere Sampling
 void BuildOrthonormalBasis(float3 n, out float3 b1, out float3 b2)
@@ -233,7 +168,7 @@ float ComputeATrousWeight(float centerDepth, float3 centerNormal, float sampleDe
     return depthWeight * normalWeight;
 }
 
-float ATrousStep(float2 uv, sampler SourceSampler, int Dilation)
+float ATrousFilter(float2 uv, sampler SourceSampler, int Dilation)
 {
     float4 gbuffer = tex2D(sNormals, uv);
     float3 centerNormal = gbuffer.rgb;
@@ -268,10 +203,13 @@ float ATrousStep(float2 uv, sampler SourceSampler, int Dilation)
 //=== Normals
 float4 PS_ReconstructNormals(VSOUT input) : SV_Target
 {
-    #if TEMPORAL_FILTER
-        if (CHECKERBOARD_RENDERING)
-            if(CheckerboardSkip(uint2(input.vpos.xy))) discard;
-    #endif
+    if (CHECKERBOARD_RENDERING) {
+        #if RESOLUTION_SCALING
+            if(CheckerboardSkip(uint2(input.vpos.xy), 2.0)) discard;
+        #else
+            if(CheckerboardSkip(uint2(input.vpos.xy), 1.0)) discard;
+        #endif
+    }
 
     float depthC = ReShade::GetLinearizedDepth(input.uv);
 
@@ -304,10 +242,13 @@ float4 PS_ReconstructNormals(VSOUT input) : SV_Target
 //=== Ambient Occlusion
 float PS_TraceRTAO(VSOUT input) : SV_Target
 {
-    #if TEMPORAL_FILTER
-        if (CHECKERBOARD_RENDERING)
-            if(CheckerboardSkip(uint2(input.vpos.xy))) discard;
-    #endif
+    if (CHECKERBOARD_RENDERING) {
+        #if RESOLUTION_SCALING
+            if(CheckerboardSkip(uint2(input.vpos.xy), 2.0)) discard;
+        #else
+            if(CheckerboardSkip(uint2(input.vpos.xy), 1.0)) discard;
+        #endif
+    }
 
     float4 gbuffer = tex2D(sNormals, input.uv);
     float3 normal = gbuffer.rgb;
@@ -319,9 +260,12 @@ float PS_TraceRTAO(VSOUT input) : SV_Target
     float3 tangent, bitangent;
     BuildOrthonormalBasis(normal, tangent, bitangent);
     float2 screenPos = input.uv * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
+    #if RESOLUTION_SCALING
+        screenPos *= 0.5;
+    #endif
     float2 rand = float2(
-        tex2Dlod(sBlueNoise, float4(frac(screenPos / 256.0), 0, 0)).r,
-        tex2Dlod(sBlueNoise, float4(frac((screenPos + float2(127.5, 127.5)) / 256.0), 0, 0)).r
+        tex2Dlod(sBlueNoise, float4(frac((screenPos + float(FRAME_COUNT % 256)) / 256.0), 0, 0)).r,
+        tex2Dlod(sBlueNoise, float4(frac((screenPos + float(FRAME_COUNT % 256) * 1.618) / 256.0), 0, 0)).r
     );
     float3 rayDir = GenerateHemisphereDirection(normal, rand, tangent, bitangent);
     float invDepth = rcp(depth);
@@ -353,123 +297,95 @@ float PS_TraceRTAO(VSOUT input) : SV_Target
 }
 
 //=== Atrous filtering
-float PS_ATrous_Pass1(VSOUT input) : SV_Target
+float PS_ATrousPass(VSOUT input) : SV_Target
 {
-    return ATrousStep(input.uv, sAO1, 1);
-}
-
-float PS_ATrous_Pass2(VSOUT input) : SV_Target
-{
-    return ATrousStep(input.uv, sAO2, 2);
+    #if RESOLUTION_SCALING
+        return ATrousFilter(input.uv, sAOTrace, ATROUS_DILATION_1);
+    #else
+        return ATrousFilter(input.uv, sAO1, ATROUS_DILATION_1);
+    #endif
 }
 
 //=== Composition
-#if TEMPORAL_FILTER
-    #include "./include/MotionEstimation.fxh"
+float PS_Blend(VSOUT input) : SV_Target
+{
+    float depth = tex2D(sNormals, input.uv).a;
+    if (depth == 0 || depth >= DEPTH_BOUNDARY) discard;
+    float ao = ATrousFilter(input.uv, sAO2, ATROUS_DILATION_2);
+    float2 flow = tex2D(sCoarseFlowL0_B, input.uv).xy;
+    float confidence = tex2D(sFlowConfidence, input.uv).x;
+    confidence = saturate(confidence + log2(2.0 - confidence) * 0.3); // logarithmically boost confidence: compresses its range to allow a bit more blend
+    float rawHistory = tex2D(sPrevAO, input.uv + flow).r; // History stores "1.0 - AO". 0.0 (Black Texture) -> Reads as 1.0 (White).
+    float prevAO = 1.0 - rawHistory;
+    float blendVal = (rawHistory == 0.0) ? 0.0 : (confidence * 0.95);
+    ao = lerp(ao, prevAO, blendVal);
+    // Use max(..., 0.001) to ensure we NEVER write exactly 0.0 again.
+    // This tells the next frame "I contain data".
+    return max(ao, 0.001);
+}
 
-    float PS_Blend(VSOUT input) : SV_Target
-    {
-        float depth = tex2D(sNormals, input.uv).a;
-        if (depth == 0 || depth >= DEPTH_BOUNDARY) discard;
-        float ao = ATrousStep(input.uv, sAO1, 4);
-        float2 flow = tex2D(sCoarseFlowL0_B, input.uv).xy;
-        float confidence = tex2D(sFlowConfidence, input.uv).x;
-        float rawHistory = tex2D(sPrevAO, input.uv + flow).r; // History stores "1.0 - AO". 0.0 (Black Texture) -> Reads as 1.0 (White).
-        float prevAO = 1.0 - rawHistory;
-        float blendVal = (rawHistory == 0.0) ? 0.0 : (confidence * 0.95);
-        ao = lerp(ao, prevAO, blendVal);
-        // Use max(..., 0.001) to ensure we NEVER write exactly 0.0 again.
-        // This tells the next frame "I contain data".
-        return max(1.0 - ao, 0.001);
+float4 PS_Display(VSOUT input) : SV_Target
+{
+    float depth = tex2D(sNormals, input.uv).a;
+    if (depth == 0 || depth >= DEPTH_BOUNDARY) {
+        if (DEBUG_VIEW) return float4(0.0, 0.0, 0.0, 1.0); // Black for out-of-range
+        discard;
     }
+    float ao = tex2D(sAO1, input.uv).r;
+    float depthFade = CalculateDepthFade(depth);
+    float displayAO = lerp(1.0, ao, depthFade);
+    if (DEBUG_VIEW) {
+        #if BUFFER_COLOR_SPACE > 1
+            return float4(ToOutputColorspace(displayAO.xxx*depthFade), 1.0);
+        #else
+            return float4(displayAO.xxx*depthFade, 1.0);
+        #endif
+    }
+    float3 base = GetColor(input.uv);
+    base *= displayAO;
+    return float4(ToOutputColorspace(base), 1.0);
+}
 
-    float4 PS_Display(VSOUT input) : SV_Target
-    {
-        float depth = tex2D(sNormals, input.uv).a;
-        if (depth == 0 || depth >= DEPTH_BOUNDARY) {
-            if (DEBUG_VIEW) return float4(0.0, 0.0, 0.0, 1.0);
-            discard;
-        }
-        float occlusion = tex2D(sAO2, input.uv).r;
-        float ao = 1.0 - occlusion;
-        float depthFade = CalculateDepthFade(depth);
-        float displayAO = lerp(1.0, ao, depthFade);
-        if (DEBUG_VIEW) {
-            #if BUFFER_COLOR_SPACE > 1
-                return float4(ToOutputColorspace(displayAO.xxx*depthFade), 1.0);
-            #else
-                return float4(displayAO.xxx*depthFade, 1.0);
-            #endif
-        }
-        float3 base = GetColor(input.uv);
-        base *= displayAO;
-        return float4(ToOutputColorspace(base), 1.0);
-    }
-
-    float PS_StoreAO(VSOUT input) : SV_Target
-    {
-        return tex2D(sAO2, input.uv).r;
-    }
-
-#else
-    float4 PS_Blend(VSOUT input) : SV_Target
-    {
-        float depth = tex2D(sNormals, input.uv).a;
-        if (depth == 0 || depth >= DEPTH_BOUNDARY) {
-            if (DEBUG_VIEW) return float4(0.0, 0.0, 0.0, 1.0);  // Black for out-of-range
-            discard;
-        }
-        float depthFade = CalculateDepthFade(depth);
-        float ao = ATrousStep(input.uv, sAO1, 4);
-        ao = lerp(1.0, ao, depthFade);
-        if (DEBUG_VIEW) {
-            #if BUFFER_COLOR_SPACE > 1
-                return float4(ToOutputColorspace(ao.xxx*depthFade), 1.0);
-            #else
-                return float4(ao.xxx*depthFade, 1.0);
-            #endif
-        }
-        float3 base = GetColor(input.uv);
-        base *= ao;
-        return float4(ToOutputColorspace(base), 1.0);
-    }
-#endif
+float PS_StoreAO(VSOUT input) : SV_Target
+{
+    return 1.0 - tex2D(sAO1, input.uv).r;
+}
 
 /*----------------.
 | :: TECHNIQUE :: |
 '----------------*/
 technique Lumenite_RTAO <
-    ui_label = "Lumenite: RTAO";
+    ui_label = "LUMENITE: RTAO";
     ui_tooltip = "Ray Traced Ambient Occlusion.";
 >
 {
     pass { VertexShader = VS; PixelShader = PS_ReconstructNormals; RenderTarget = tNormals; }
-    pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAO1; }
-    pass { VertexShader = VS; PixelShader = PS_ATrous_Pass1; RenderTarget = tAO2; }
-    pass { VertexShader = VS; PixelShader = PS_ATrous_Pass2; RenderTarget = tAO1; }
-    #if TEMPORAL_FILTER
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CurrLuma; RenderTarget = tCurrLuma; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL4; RenderTarget = tCoarseFlowL4; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL3; RenderTarget = tCoarseFlowL3_A; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL3; RenderTarget = tCoarseFlowL3_B; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL2; RenderTarget = tCoarseFlowL2_A; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL2; RenderTarget = tCoarseFlowL2_B; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL1; RenderTarget = tCoarseFlowL1_A; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL1; RenderTarget = tCoarseFlowL1_B; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL0; RenderTarget = tCoarseFlowL0_A; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL0; RenderTarget = tCoarseFlowL0_B; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_FinalFlow; RenderTarget = tCoarseFlowL0_A; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterFinal; RenderTarget = tCoarseFlowL0_B; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_GlobalFlow; RenderTarget = tGlobalFlow; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_ComputeConfidence; RenderTarget = tFlowConfidence; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CopyFinalFlowToHistory; RenderTarget = tPrevCoarseFlow; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CopyCurrLumaAsPrev; RenderTarget = tPrevLuma; }
-        pass { VertexShader = PostProcessVS; PixelShader = PS_CopyCurrColorAsPrev; RenderTarget = tPrevBackBuffer; }
-
-        pass { VertexShader = VS; PixelShader = PS_Blend; RenderTarget = tAO2; }
-        pass { VertexShader = VS; PixelShader = PS_Display; }
-        pass { VertexShader = VS; PixelShader = PS_StoreAO; RenderTarget = tPrevAO; }
+    #if RESOLUTION_SCALING
+        pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAOTrace; }
     #else
-        pass { VertexShader = VS; PixelShader = PS_Blend; }
+        pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAO1; }
     #endif
+    pass { VertexShader = VS; PixelShader = PS_ATrousPass; RenderTarget = tAO2; }
+
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CurrLuma; RenderTarget = tCurrLuma; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL4; RenderTarget = tCoarseFlowL4; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL3; RenderTarget = tCoarseFlowL3_A; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL3; RenderTarget = tCoarseFlowL3_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL2; RenderTarget = tCoarseFlowL2_A; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL2; RenderTarget = tCoarseFlowL2_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL1; RenderTarget = tCoarseFlowL1_A; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL1; RenderTarget = tCoarseFlowL1_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CoarseFlowL0; RenderTarget = tCoarseFlowL0_A; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterL0; RenderTarget = tCoarseFlowL0_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_FinalFlow; RenderTarget = tCoarseFlowL0_A; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_SpatialFilterFinal; RenderTarget = tCoarseFlowL0_B; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_GlobalFlow; RenderTarget = tGlobalFlow; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_ComputeConfidence; RenderTarget = tFlowConfidence; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CopyFinalFlowToHistory; RenderTarget = tPrevCoarseFlow; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CopyCurrLumaAsPrev; RenderTarget = tPrevLuma; }
+    pass { VertexShader = PostProcessVS; PixelShader = PS_CopyCurrColorAsPrev; RenderTarget = tPrevBackBuffer; }
+
+    pass { VertexShader = VS; PixelShader = PS_Blend; RenderTarget = tAO1; }
+    pass { VertexShader = VS; PixelShader = PS_Display; }
+    pass { VertexShader = VS; PixelShader = PS_StoreAO; RenderTarget = tPrevAO; }
 }

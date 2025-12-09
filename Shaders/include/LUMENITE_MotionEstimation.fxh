@@ -24,8 +24,10 @@
         ========================================================================
 */
 
-#ifndef INCLUDE_MOTIONESTIMATION_FXH
-#define INCLUDE_MOTIONESTIMATION_FXH
+#pragma once
+
+#include "ReShade.fxh"
+#include "LUMENITE_Helpers.fxh"
 
 /*---------------.
 | :: TEXTURES :: |
@@ -666,5 +668,3 @@ float PS_ComputeConfidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_
 
     return (consistency_confidence * length_confidence * photometric_confidence);
 }
-
-#endif // INCLUDE_MOTIONESTIMATION_FXH
