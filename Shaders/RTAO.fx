@@ -34,8 +34,8 @@
 | :: DEFINITIONS :: |
 '------------------*/
 
-#ifndef LOWRES_RENDERING
-  #define LOWRES_RENDERING 1
+#ifndef LOW_RESOLUTION
+  #define LOW_RESOLUTION 1
 #endif
 
 #define INITIAL_STEP_SCALE 0.9 // How small the very first step is (as a fraction of the average step size).
@@ -45,7 +45,7 @@
 #define ATROUS_DEPTH_WEIGHT_SCALE 800.0
 #define ATROUS_NORMAL_WEIGHT_SCALE 13.0
 
-#if LOWRES_RENDERING
+#if LOW_RESOLUTION
     #define ATROUS_DILATION_1 2
     #define ATROUS_DILATION_2 4
     #define HISTORY_BLEND 0.97
@@ -104,7 +104,7 @@ uniform float AO_INTENSITY <
 texture tNormals { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler sNormals { Texture = tNormals; };
 
-#if LOWRES_RENDERING
+#if LOW_RESOLUTION
     texture tAOTrace { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16F; };
     sampler sAOTrace { Texture = tAOTrace; AddressU = CLAMP; AddressV = CLAMP; };
 #endif
@@ -206,7 +206,7 @@ float ATrousFilter(float2 uv, sampler SourceSampler, int Dilation)
 float4 PS_ReconstructNormals(VSOUT input) : SV_Target
 {
     if (CHECKERBOARD_RENDERING) {
-        #if LOWRES_RENDERING
+        #if LOW_RESOLUTION
             if(CheckerboardSkip(uint2(input.vpos.xy), 2.0)) discard;
         #else
             if(CheckerboardSkip(uint2(input.vpos.xy), 1.0)) discard;
@@ -245,7 +245,7 @@ float4 PS_ReconstructNormals(VSOUT input) : SV_Target
 float PS_TraceRTAO(VSOUT input) : SV_Target
 {
     if (CHECKERBOARD_RENDERING) {
-        #if LOWRES_RENDERING
+        #if LOW_RESOLUTION
             if(CheckerboardSkip(uint2(input.vpos.xy), 2.0)) discard;
         #else
             if(CheckerboardSkip(uint2(input.vpos.xy), 1.0)) discard;
@@ -297,7 +297,7 @@ float PS_TraceRTAO(VSOUT input) : SV_Target
 //=== Atrous filtering
 float PS_ATrousPass(VSOUT input) : SV_Target
 {
-    #if LOWRES_RENDERING
+    #if LOW_RESOLUTION
         return ATrousFilter(input.uv, sAOTrace, ATROUS_DILATION_1);
     #else
         return ATrousFilter(input.uv, sAO1, ATROUS_DILATION_1);
@@ -358,7 +358,7 @@ technique Lumenite_RTAO <
 >
 {
     pass { VertexShader = VS; PixelShader = PS_ReconstructNormals; RenderTarget = tNormals; }
-    #if LOWRES_RENDERING
+    #if LOW_RESOLUTION
         pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAOTrace; }
     #else
         pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAO1; }
