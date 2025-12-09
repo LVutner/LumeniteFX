@@ -28,11 +28,11 @@
                      - This lerp creates an exponential moving average blend. Feeding the
                        output back recursively creates a mathematical series where older
                        frames hold exponentially less weight over time.
-                     - Apply logarithmic compression to confidence for temporal
-                       accumulation of samples. Boost undersampled regions preferentially.
-                       Compress the range as:
-                           | saturate(confidence + log2(2.0 - confidence) * 0.45)
-                       then lerp as above. Boost factor 0.45-0.5 balances convergence
+                     - For stronger blend, apply logarithmic compression to confidence for
+                       temporal accumulation of samples. Boost undersampled regions
+                       preferentially. Compress the range as:
+                           | saturate(confidence + log2(2.0 - confidence) * 0.3)
+                       then lerp as above. Boost factor 0.3-0.5 balances convergence
                        against ghosting artifacts. Tune as necessary.
                      - (NOTE: The use of confidence output from lumaflow is mandatory.)
 
