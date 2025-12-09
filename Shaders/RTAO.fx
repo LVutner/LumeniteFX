@@ -35,7 +35,7 @@
 '------------------*/
 
 #ifndef RESOLUTION_SCALING
-  #define RESOLUTION_SCALING 0
+  #define RESOLUTION_SCALING 1
 #endif
 
 #define INITIAL_STEP_SCALE 0.9 // How small the very first step is (as a fraction of the average step size).
