@@ -259,13 +259,9 @@ float PS_TraceRTAO(VSOUT input) : SV_Target
     float3 startPos = UVToViewSpace(input.uv, depth, input);
     float3 tangent, bitangent;
     BuildOrthonormalBasis(normal, tangent, bitangent);
-    float2 screenPos = input.uv * float2(BUFFER_WIDTH, BUFFER_HEIGHT);
-    #if RESOLUTION_SCALING
-        screenPos *= 0.5;
-    #endif
     float2 rand = float2(
-        tex2Dlod(sBlueNoise, float4(frac((screenPos + float(FRAME_COUNT % 256)) / 256.0), 0, 0)).r,
-        tex2Dlod(sBlueNoise, float4(frac((screenPos + float(FRAME_COUNT % 256) * 1.618) / 256.0), 0, 0)).r
+        tex2Dlod(sBlueNoise, float4(frac((input.vpos.xy + float(FRAME_COUNT % 256)) / 256.0), 0, 0)).r,
+        tex2Dlod(sBlueNoise, float4(frac((input.vpos.xy + float(FRAME_COUNT % 256) * 1.618) / 256.0), 0, 0)).r
     );
     float3 rayDir = GenerateHemisphereDirection(normal, rand, tangent, bitangent);
     float invDepth = rcp(depth);
