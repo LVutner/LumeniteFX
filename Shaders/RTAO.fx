@@ -66,7 +66,7 @@ uniform bool DEBUG_VIEW <
 > = 0;
 
 uniform bool CHECKERBOARD_RENDERING <
-    ui_label = "Half-Framerate Rendering";
+    ui_label = "Low Framerate Rendering";
     ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of the AO Mask.";
     ui_category = "Ambient Occlusion";
 > = 1;
