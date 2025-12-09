@@ -48,7 +48,9 @@
 #if RESOLUTION_SCALING
     #define ATROUS_DILATION_1 2
     #define ATROUS_DILATION_2 4
+    #define HISTORY_BLEND 0.97
 #else
+    #define HISTORY_BLEND 0.94
     #define ATROUS_DILATION_1 1
     #define ATROUS_DILATION_2 2
 #endif
@@ -313,7 +315,7 @@ float PS_Blend(VSOUT input) : SV_Target
     confidence = saturate(confidence + log2(2.0 - confidence) * 0.3); // logarithmically boost confidence: compresses its range to allow a bit more blend
     float rawHistory = tex2D(sPrevAO, input.uv + flow).r; // History stores "1.0 - AO". 0.0 (Black Texture) -> Reads as 1.0 (White).
     float prevAO = 1.0 - rawHistory;
-    float blendVal = (rawHistory == 0.0) ? 0.0 : (confidence * 0.95);
+    float blendVal = (rawHistory == 0.0) ? 0.0 : (confidence * HISTORY_BLEND);
     ao = lerp(ao, prevAO, blendVal);
     // Use max(..., 0.001) to ensure we NEVER write exactly 0.0 again.
     // This tells the next frame "I contain data".
