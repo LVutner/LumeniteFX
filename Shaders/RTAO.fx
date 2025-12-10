@@ -33,9 +33,8 @@
 /*------------------.
 | :: DEFINITIONS :: |
 '------------------*/
-
-#ifndef HALF_RESOLUTION
-  #define HALF_RESOLUTION 1
+#ifndef AO_QUALITY
+  #define AO_QUALITY 0
 #endif
 
 #define INITIAL_STEP_SCALE 0.9 // How small the very first step is (as a fraction of the average step size).
@@ -46,7 +45,7 @@
 #define ATROUS_NORMAL_WEIGHT_SCALE 13.0
 #define MOTION_CONFIDENCE_BOOST 0.3
 
-#if HALF_RESOLUTION
+#if AO_QUALITY==0
     #define ATROUS_DILATION_1 2
     #define ATROUS_DILATION_2 4
     #define HISTORY_BLEND 0.97
@@ -67,7 +66,7 @@ uniform bool DEBUG_VIEW <
 > = 0;
 
 uniform bool CHECKERBOARD_RENDERING <
-    ui_label = "Half Framerate Rendering";
+    ui_label = "Half-framerate Rendering";
     ui_tooltip = "Skips half the pixels to render faster. Minor temporal lag of the AO Mask.";
     ui_category = "Ambient Occlusion";
 > = 1;
@@ -91,8 +90,8 @@ uniform float DEPTH_FADE_START <
 > = 0.75;
 
 uniform float AO_INTENSITY <
-    ui_type = "slider";
-    ui_min = 0.0; ui_max = 1.0; ui_step = 0.01;
+    ui_type = "drag";
+    ui_min = 0.0; ui_max = 1.0;
     ui_label = "AO Strength";
     ui_tooltip = "Controls the intensity of the ambient occlusion effect.";
     ui_category = "Ambient Occlusion";
@@ -105,7 +104,7 @@ uniform float AO_INTENSITY <
 texture tNormals { Width = BUFFER_WIDTH; Height = BUFFER_HEIGHT; Format = RGBA16F; };
 sampler sNormals { Texture = tNormals; };
 
-#if HALF_RESOLUTION
+#if AO_QUALITY==0
     texture tAOTrace { Width = BUFFER_WIDTH / 2; Height = BUFFER_HEIGHT / 2; Format = R16F; };
     sampler sAOTrace { Texture = tAOTrace; AddressU = CLAMP; AddressV = CLAMP; };
 #endif
@@ -207,7 +206,7 @@ float ATrousFilter(float2 uv, sampler SourceSampler, int Dilation)
 float4 PS_ReconstructNormals(VSOUT input) : SV_Target
 {
     if (CHECKERBOARD_RENDERING) {
-        #if HALF_RESOLUTION
+        #if AO_QUALITY==0
             if(CheckerboardSkip(uint2(input.vpos.xy), 2.0)) discard;
         #else
             if(CheckerboardSkip(uint2(input.vpos.xy), 1.0)) discard;
@@ -246,7 +245,7 @@ float4 PS_ReconstructNormals(VSOUT input) : SV_Target
 float PS_TraceRTAO(VSOUT input) : SV_Target
 {
     if (CHECKERBOARD_RENDERING) {
-        #if HALF_RESOLUTION
+        #if AO_QUALITY==0
             if(CheckerboardSkip(uint2(input.vpos.xy), 2.0)) discard;
         #else
             if(CheckerboardSkip(uint2(input.vpos.xy), 1.0)) discard;
@@ -298,7 +297,7 @@ float PS_TraceRTAO(VSOUT input) : SV_Target
 //=== Atrous filtering
 float PS_ATrousPass(VSOUT input) : SV_Target
 {
-    #if HALF_RESOLUTION
+    #if AO_QUALITY==0
         return ATrousFilter(input.uv, sAOTrace, ATROUS_DILATION_1);
     #else
         return ATrousFilter(input.uv, sAO1, ATROUS_DILATION_1);
@@ -359,7 +358,7 @@ technique Lumenite_RTAO <
 >
 {
     pass { VertexShader = VS; PixelShader = PS_ReconstructNormals; RenderTarget = tNormals; }
-    #if HALF_RESOLUTION
+    #if AO_QUALITY==0
         pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAOTrace; }
     #else
         pass { VertexShader = VS; PixelShader = PS_TraceRTAO; RenderTarget = tAO1; }
