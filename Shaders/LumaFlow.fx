@@ -143,11 +143,11 @@ float3 GetColor(float2 uv)
 float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texel_size, int mip)
 {
     static const int2 SPARSE_9[9] = {
-    	int2(-1,-1), int2(5,-1),
-    	int2(1,1),   int2(3,1),
-    	int2(2,2),
-    	int2(1,3),   int2(3,3),
-    	int2(-1,5),  int2(5,5)
+        int2(-1,-1), int2(5,-1),
+        int2(1,1),   int2(3,1),
+        int2(2,2),
+        int2(1,3),   int2(3,3),
+        int2(-1,5),  int2(5,5)
     };
 
     // Gather samples and calculate the mean for each patch
@@ -202,9 +202,9 @@ float2 Median9(sampler2D motion_tex, float2 uv, float2 texel_size, int mip)
     for(int k = 0; k < 5; k++)
     {
         [loop]
-        for(int i = 0; i < 8; i++)  // Skip already-bubbled tail
+        for(int i = 0; i < 8; i++)
         {
-            if(i >= 8 - k) break;
+            if(i >= 8 - k) break; // Skip already-bubbled tail
             if(x_values[i] > x_values[i+1])
             {
                 float tmp = x_values[i];
@@ -288,7 +288,7 @@ float2 ComputeFlow(sampler2D source_flow_sampler, float2 uv, int mip1, int mip2)
     // 8-directional search pattern
     int2 c8[8] = {
         int2(-1, 1), int2(0, 1), int2(1, 1),
-        int2(-1, 0),              int2(1, 0),
+        int2(-1, 0),             int2(1, 0),
         int2(-1,-1), int2(0,-1), int2(1,-1)
     };
 
@@ -770,7 +770,7 @@ float PS_Confidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_Target
 
     float length_confidence = rcp(motion_penalty * 0.05 + 1.0); // Gentler hyperbolic falloff: 1px→0.95, 10px→0.67, 100px→0.17)
     float consistency_confidence = rcp(normalized_error + 1.0); // Standard hyperbolic falloff: perfect match = 1.0, large error → 0.0
-    float photometric_confidence = exp(-luma_error * 5.0); // Exponential fall off for luma mismatch
+    float photometric_confidence = exp(-luma_error * 5.0);      // Exponential fall off for luma mismatch
 
     return (consistency_confidence * length_confidence * photometric_confidence);
 }

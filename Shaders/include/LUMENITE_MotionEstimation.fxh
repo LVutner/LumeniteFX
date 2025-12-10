@@ -162,11 +162,11 @@ bool IsOOB(float2 uv) {
 float ZAD(sampler2D cur, sampler2D prev, float2 pos_a, float2 pos_b, float2 texel_size, int mip)
 {
     static const int2 SPARSE_9[9] = {
-    	int2(-1,-1), int2(5,-1),
-    	int2(1,1),   int2(3,1),
-    	int2(2,2),
-    	int2(1,3),   int2(3,3),
-    	int2(-1,5),  int2(5,5)
+        int2(-1,-1), int2(5,-1),
+        int2(1,1),   int2(3,1),
+        int2(2,2),
+        int2(1,3),   int2(3,3),
+        int2(-1,5),  int2(5,5)
     };
 
     // Gather samples and calculate the mean for each patch
@@ -664,7 +664,7 @@ float PS_ComputeConfidence(float4 pos : SV_Position, float2 uv : TEXCOORD) : SV_
 
     float length_confidence = rcp(motion_penalty * 0.05 + 1.0); // Gentler hyperbolic falloff: 1px→0.95, 10px→0.67, 100px→0.17)
     float consistency_confidence = rcp(normalized_error + 1.0); // Standard hyperbolic falloff: perfect match = 1.0, large error → 0.0
-    float photometric_confidence = exp(-luma_error * 5.0); // Exponential fall off for luma mismatch
+    float photometric_confidence = exp(-luma_error * 5.0);      // Exponential fall off for luma mismatch
 
     return (consistency_confidence * length_confidence * photometric_confidence);
 }
