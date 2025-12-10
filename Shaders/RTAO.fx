@@ -51,9 +51,9 @@
     #define ATROUS_DILATION_2 4
     #define HISTORY_BLEND 0.97
 #else
-    #define HISTORY_BLEND 0.94
     #define ATROUS_DILATION_1 1
     #define ATROUS_DILATION_2 2
+    #define HISTORY_BLEND 0.94
 #endif
 
 /*---------------.
