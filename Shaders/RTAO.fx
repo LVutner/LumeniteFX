@@ -85,7 +85,7 @@ uniform float DEPTH_FADE_START <
     ui_type = "slider";
     ui_min = 0.1; ui_max = 1.0; ui_step = 0.01;
     ui_label = "Z+ Fade Start (%)";
-    ui_tooltip = "Z+ fraction where effect starts fading out (relative to Z+ boundary)";
+    ui_tooltip = "Z+ fraction where effect starts fading out (relative to DEPTH_BOUNDARY)";
     ui_category = "Ambient Occlusion";
     hidden = true;
 > = 0.75;
