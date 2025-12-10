@@ -44,6 +44,7 @@
 #define AO_RADIUS 0.02
 #define ATROUS_DEPTH_WEIGHT_SCALE 800.0
 #define ATROUS_NORMAL_WEIGHT_SCALE 13.0
+#define MOTION_CONFIDENCE_COMPRESSION 0.3
 
 #if HALF_RESOLUTION
     #define ATROUS_DILATION_1 2
@@ -312,7 +313,7 @@ float PS_Blend(VSOUT input) : SV_Target
     float ao = ATrousFilter(input.uv, sAO2, ATROUS_DILATION_2);
     float2 flow = tex2D(sCoarseFlowL0_B, input.uv).xy;
     float confidence = tex2D(sFlowConfidence, input.uv).x;
-    confidence = saturate(confidence + log2(2.0 - confidence) * 0.3); // logarithmically boost confidence: compresses its range to allow a bit more blend
+    confidence = saturate(confidence + log2(2.0 - confidence) * MOTION_CONFIDENCE_COMPRESSION); // logarithmically boost confidence: compresses its range to allow a bit more blend
     float rawHistory = tex2D(sPrevAO, input.uv + flow).r; // History stores "1.0 - AO". 0.0 (Black Texture) -> Reads as 1.0 (White).
     float prevAO = 1.0 - rawHistory;
     float blendVal = (rawHistory == 0.0) ? 0.0 : (confidence * HISTORY_BLEND);
