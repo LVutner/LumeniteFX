@@ -13,7 +13,7 @@
         ========================================================================
 
         Filename   : RTAO.fx
-        Version    : 2025.12.10
+        Version    : 2025.12.12
         Author     : Afzaal (Kaidō)
         Description: RTAO - Ray Traced Ambient Occlusion
         License    : AGNYA License
@@ -308,8 +308,11 @@ float PS_ATrousPass(VSOUT input) : SV_Target
 float PS_Blend(VSOUT input) : SV_Target
 {
     float depth = tex2D(sNormals, input.uv).a;
-    if (depth == 0 || depth >= DEPTH_BOUNDARY) discard;
+    // Overwrite noise at boundary with clean White, preventing gaps
+    if (depth >= DEPTH_BOUNDARY) return 1.0;
+    if (depth == 0) discard;
     float ao = ATrousFilter(input.uv, sAO2, ATROUS_DILATION_2);
+    ao = lerp(1.0, ao, CalculateDepthFade(depth));
     float2 flow = tex2D(sCoarseFlowL0_B, input.uv).xy;
     float confidence = tex2D(sFlowConfidence, input.uv).x;
     confidence = saturate(confidence + log2(2.0 - confidence) * MOTION_CONFIDENCE_BOOST); // logarithmically boost confidence: compresses its range to allow a bit more blend
@@ -325,28 +328,27 @@ float PS_Blend(VSOUT input) : SV_Target
 float4 PS_Display(VSOUT input) : SV_Target
 {
     float depth = tex2D(sNormals, input.uv).a;
-    if (depth == 0 || depth >= DEPTH_BOUNDARY) {
-        if (DEBUG_VIEW) return float4(0.0, 0.0, 0.0, 1.0); // Black for out-of-range
-        discard;
-    }
-    float ao = tex2D(sAO1, input.uv).r;
-    float depthFade = CalculateDepthFade(depth);
-    float displayAO = lerp(1.0, ao, depthFade);
+    float ao = tex2D(sAO1, input.uv).r; // Stable AO mask (fades to 1.0)
     if (DEBUG_VIEW) {
         #if BUFFER_COLOR_SPACE > 1
-            return float4(ToOutputColorspace(displayAO.xxx*depthFade), 1.0);
+            return float4(ToOutputColorspace(ao.xxx), 1.0);
         #else
-            return float4(displayAO.xxx*depthFade, 1.0);
+            return float4(ao.xxx, 1.0);
         #endif
     }
+    if (depth == 0 || depth >= DEPTH_BOUNDARY) discard;
     float3 base = GetColor(input.uv);
-    base *= displayAO;
+    base *= ao;
     return float4(ToOutputColorspace(base), 1.0);
 }
 
 float PS_StoreAO(VSOUT input) : SV_Target
 {
-    return 1.0 - tex2D(sAO1, input.uv).r;
+    // We must prevent history collision here
+    // If we store exactly 0.0 (meaning White/No AO), the next frame's blend pass
+    // thinks history is empty and resets it, causing shimmer
+    // So we clamp to 0.0001 so the system knows "This is valid history data"
+    return max(1.0 - tex2D(sAO1, input.uv).r, 0.0001);
 }
 
 /*----------------.
