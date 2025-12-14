@@ -25,10 +25,10 @@
 */
 
 #include "ReShade.fxh"
-#include "LUMENITE_Projections.fxh"
-#include "LUMENITE_Helpers.fxh"
-#include "LUMENITE_ColorManagement.fxh"
-#include "LUMENITE_MotionEstimation.fxh"
+#include ".\include\LUMENITE_Projections.fxh"
+#include ".\include\LUMENITE_Helpers.fxh"
+#include ".\include\LUMENITE_ColorManagement.fxh"
+#include ".\include\LUMENITE_MotionEstimation.fxh"
 
 /*------------------.
 | :: DEFINITIONS :: |
